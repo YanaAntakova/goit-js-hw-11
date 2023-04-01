@@ -1,8 +1,10 @@
-import './css/styles.css';
+
+
+import '../css/styles.css';
 import Notiflix from 'notiflix';
 import SimpleLightbox from 'simplelightbox';
 import 'simplelightbox/dist/simple-lightbox.min.css';
-import { fetchPictures } from './js/fetch-pictures';
+import { fetchPictures } from './fetch-pictures';
 
 const searchForm = document.querySelector('#search-form');
 const gallery = document.querySelector('.gallery');
@@ -22,12 +24,12 @@ async function handleSearch(e) {
   ClearMarkUp();
   if (searchQuery === '') {
     searchForm.reset();
-    loadBtn.classList.add('is-hidden');
     Notiflix.Notify.warning('Please, enter a request', {
       clickToClose: true,
     });
     return;
   }
+
   try {
     const {
       hits: pictures,
@@ -47,14 +49,15 @@ async function handleSearch(e) {
       clickToClose: true,
     });
     createCards(pictures);
+    window.addEventListener('scroll', handleScrollPage);
     simpleLightbox = new SimpleLightbox('.gallery a', {
-      // navText: ['&#11178;', '&#11179;'],
       navText: ['&#8656;', '&#8658;'],
-      //   closeText: "&#10015;", краще не розкоментовувати :)
+      
       closeText: '&#10803',
       showCounter: false,
     });
     if (totalQuantity < page * 40) {
+      window.removeEventListener('scroll', handleScrollPage);
       loadBtn.classList.add('is-hidden');
       Notiflix.Notify.warning(
         "We're sorry, but you've reached the end of search results.",
@@ -63,7 +66,7 @@ async function handleSearch(e) {
       createEndMessage();
       return;
     }
-    loadBtn.classList.remove('is-hidden');
+   
   } catch {
     Notiflix.Notify.failure('Please try again later.'),
       {
@@ -72,6 +75,16 @@ async function handleSearch(e) {
   }
 
   console.log(searchQuery);
+}
+
+function handleScrollPage() {
+  const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
+
+  console.log({ scrollTop, scrollHeight, clientHeight });
+
+  if (clientHeight + scrollTop >= scrollHeight - 5) {
+    handleLoadMore();
+  }
 }
 
 async function handleLoadMore() {
@@ -87,6 +100,7 @@ async function handleLoadMore() {
     autoScrollPage();
 
     if (totalQuantity < page * 40) {
+      window.removeEventListener('scroll', handleScrollPage);
       loadBtn.classList.add('is-hidden');
       createEndMessage();
       return;
