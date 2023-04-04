@@ -1,168 +1,92 @@
-import './css/styles.css';
+import './sass/main.scss';
+import { fetchImages } from './js/fetch-images';
+import { renderGallery } from './js/render-gallery';
+import { onScroll, onToTopBtn } from './js/scroll';
 import Notiflix from 'notiflix';
 import SimpleLightbox from 'simplelightbox';
+
 import 'simplelightbox/dist/simple-lightbox.min.css';
-import { fetchPictures } from './js/fetch-pictures';
 
 const searchForm = document.querySelector('#search-form');
 const gallery = document.querySelector('.gallery');
-const loadBtn = document.querySelector('.load-more');
-
-searchForm.addEventListener('submit', handleSearch);
-loadBtn.addEventListener('click', handleLoadMore);
-
-let simpleLightbox = null;
-let searchQuery = null;
+const loadMoreBtn = document.querySelector('.btn-load-more');
+let query = '';
 let page = 1;
+let simpleLightBox;
+const perPage = 40;
 
-async function handleSearch(e) {
+searchForm.addEventListener('submit', onSearchForm);
+loadMoreBtn.addEventListener('click', onLoadMoreBtn);
+
+onScroll();
+onToTopBtn();
+
+function onSearchForm(e) {
   e.preventDefault();
-  searchQuery = e.target.elements.searchQuery.value.trim();
+  window.scrollTo({ top: 0 });
   page = 1;
-  ClearMarkUp();
-  if (searchQuery === '') {
-    searchForm.reset();
-    loadBtn.classList.add('is-hidden');
-    Notiflix.Notify.warning('Please, enter a request', {
-      clickToClose: true,
-    });
+  query = e.currentTarget.searchQuery.value.trim();
+  gallery.innerHTML = '';
+  loadMoreBtn.classList.add('is-hidden');
+
+  if (query === '') {
+    alertNoEmptySearch();
     return;
   }
-  try {
-    const {
-      hits: pictures,
-      totalHits: totalQuantity,
-      total: quantity,
-    } = await fetchPictures(searchQuery, page);
-    if (quantity === 0) {
-      Notiflix.Notify.failure(
-        'Sorry, there are no images matching your search query. Please try again.',
-        {
-          clickToClose: true,
+
+  fetchImages(query, page, perPage)
+    .then(({ data }) => {
+      if (data.totalHits === 0) {
+        alertNoImagesFound();
+      } else {
+        renderGallery(data.hits);
+        simpleLightBox = new SimpleLightbox('.gallery a').refresh();
+        alertImagesFound(data);
+
+        if (data.totalHits > perPage) {
+          loadMoreBtn.classList.remove('is-hidden');
         }
-      );
-      return;
-    }
-    Notiflix.Notify.success(`Hooray! We found ${totalQuantity} images.`, {
-      clickToClose: true,
+      }
+    })
+    .catch(error => console.log(error))
+    .finally(() => {
+      searchForm.reset();
     });
-    createCards(pictures);
-    simpleLightbox = new SimpleLightbox('.gallery a', {
-      // navText: ['&#11178;', '&#11179;'],
-      navText: ['&#8656;', '&#8658;'],
-      //   closeText: "&#10015;", краще не розкоментовувати :)
-      closeText: '&#10803',
-      showCounter: false,
-    });
-    if (totalQuantity < page * 40) {
-      loadBtn.classList.add('is-hidden');
-      Notiflix.Notify.warning(
-        "We're sorry, but you've reached the end of search results.",
-        { clickToClose: true }
-      );
-      createEndMessage();
-      return;
-    }
-    loadBtn.classList.remove('is-hidden');
-  } catch {
-    Notiflix.Notify.failure('Please try again later.'),
-      {
-        clickToClose: true,
-      };
-  }
-
-  console.log(searchQuery);
 }
 
-async function handleLoadMore() {
+function onLoadMoreBtn() {
   page += 1;
-  try {
-    const {
-      hits: pictures,
-      totalHits: totalQuantity,
-      total: quantity,
-    } = await fetchPictures(searchQuery, page);
-    createCards(pictures);
-    simpleLightbox.refresh();
-    autoScrollPage();
+  simpleLightBox.destroy();
 
-    if (totalQuantity < page * 40) {
-      loadBtn.classList.add('is-hidden');
-      createEndMessage();
-      return;
-    }
-  } catch (err) {
-    console.log(err);
-    Notiflix.Notify.failure('Please try again later.'),
-      {
-        clickToClose: true,
-      };
-  }
+  fetchImages(query, page, perPage)
+    .then(({ data }) => {
+      renderGallery(data.hits);
+      simpleLightBox = new SimpleLightbox('.gallery a').refresh();
+
+      const totalPages = Math.ceil(data.totalHits / perPage);
+
+      if (page > totalPages) {
+        loadMoreBtn.classList.add('is-hidden');
+        alertEndOfSearch();
+      }
+    })
+    .catch(error => console.log(error));
 }
-function createEndMessage() {
-  gallery.insertAdjacentHTML(
-    'beforeend',
-    `
-    <p class="end-message">
-      The end :)
-    </p>
-    `
+
+function alertImagesFound(data) {
+  Notiflix.Notify.success(`Hooray! We found ${data.totalHits} images.`);
+}
+
+function alertNoEmptySearch() {
+  Notiflix.Notify.failure('The search string cannot be empty. Please specify your search query.');
+}
+
+function alertNoImagesFound() {
+  Notiflix.Notify.failure(
+    'Sorry, there are no images matching your search query. Please try again.',
   );
 }
 
-function createCards(data) {
-  data.map(
-    ({
-      webformatURL,
-      largeImageURL,
-      tags,
-      likes,
-      views,
-      comments,
-      downloads,
-    }) => {
-      gallery.insertAdjacentHTML(
-        'beforeend',
-        `
-        <a href="${largeImageURL}">
-          <div class="photo-card">
-            <img src="${webformatURL}" alt="${tags}" loading="lazy" />
-            <div class="info">
-              <p class="info-item">
-                <b>Likes</b>
-                ${likes}
-              </p>
-              <p class="info-item">
-                <b>Views</b>
-                ${views}
-              </p>
-              <p class="info-item">
-                <b>Comments</b>
-                ${comments}
-              </p>
-              <p class="info-item">
-                <b>Downloads</b>
-                ${downloads}
-              </p>
-            </div>
-          </div>
-        </a>
-        `
-      );
-    }
-  );
-}
-
-function autoScrollPage() {
-  const { height: cardHeight } =
-    gallery.firstElementChild.getBoundingClientRect();
-
-  window.scrollBy({
-    top: cardHeight * 2,
-    behavior: 'smooth',
-  });
-}
-
-function ClearMarkUp() {
-  gallery.innerHTML = '';
+function alertEndOfSearch() {
+  Notiflix.Notify.failure("We're sorry, but you've reached the end of search results.");
 }
