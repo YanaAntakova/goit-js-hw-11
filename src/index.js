@@ -28,12 +28,13 @@ function onSearchForm(e) {
   query = e.currentTarget.searchQuery.value.trim();
   gallery.innerHTML = '';
   loadMoreBtn.classList.add('is-hidden');
-
+let input = document.querySelector('input');
+console.log(input.value);
   if (query === '') {
     alertNoEmptySearch();
     return;
+    // console.log(query);
   }
-
   fetchImages(query, page, perPage)
     .then(({ data }) => {
       if (data.totalHits === 0) {
@@ -62,7 +63,6 @@ function onLoadMoreBtn() {
     .then(({ data }) => {
       renderGallery(data.hits);
       simpleLightBox = new SimpleLightbox('.gallery a').refresh();
-
       const totalPages = Math.ceil(data.totalHits / perPage);
 
       if (page > totalPages) {
@@ -76,6 +76,7 @@ function onLoadMoreBtn() {
 function alertImagesFound(data) {
   Notiflix.Notify.success(`Hooray! We found ${data.totalHits} images.`);
 }
+
 
 function alertNoEmptySearch() {
   Notiflix.Notify.failure('The search string cannot be empty. Please specify your search query.');
