@@ -21,6 +21,7 @@ loadMoreBtn.addEventListener('click', onLoadMoreBtn);
 onScroll();
 onToTopBtn();
 
+
 function onSearchForm(e) {
   e.preventDefault();
   window.scrollTo({ top: 0 });
@@ -33,7 +34,7 @@ console.log(input.value);
   if (query === '') {
     alertNoEmptySearch();
     return;
-    // console.log(query);
+
   }
   fetchImages(query, page, perPage)
     .then(({ data }) => {
@@ -64,13 +65,15 @@ function onLoadMoreBtn() {
       renderGallery(data.hits);
       simpleLightBox = new SimpleLightbox('.gallery a').refresh();
       const totalPages = Math.ceil(data.totalHits / perPage);
+    if (page < totalPages) {
+    loadMoreBtn.classList.remove('is-hidden');
+    }else{
+    loadMoreBtn.classList.add('is-hidden'); alertEndOfSearch();
+}
 
-      if (page > totalPages) {
-        loadMoreBtn.classList.add('is-hidden');
-        alertEndOfSearch();
-      }
     })
     .catch(error => console.log(error));
+  
 }
 
 function alertImagesFound(data) {
